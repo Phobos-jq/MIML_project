@@ -1,7 +1,6 @@
 from dependencies import *
 from data import creat_dataloader
 from model import Transformer, MLP, LSTM
-
 @dataclass
 class Trainer:
     p: int = 97
@@ -26,6 +25,8 @@ class Trainer:
     nesterov: bool = False  # 是否使用 Nesterov 动量 (仅对 SGD 有效)
     dampening: float = 0.0  # SGD 可用的动量阻尼参数
     dropout: float = 0.2  # Dropout 概率
+    max_iter_step: int = -1 # 迭代次数的限制，如果设为-1表示没有限制
+    stop_acc: float = 99 # 达到99测试正确率后停止
     def __post_init__(self):      
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         if self.verbose >= 1:
@@ -77,6 +78,7 @@ class Trainer:
         self.criterion = torch.nn.CrossEntropyLoss()
         self.stepwise_train_acc = [] # 用来画图
         self.stepwise_test_acc = []
+        self.iter_step = 0 # 记录迭代步数
     
     def fit(self):
         for epoch_idx, epoch in enumerate(range(self.num_epochs)):
@@ -102,8 +104,15 @@ class Trainer:
             self.optimizer.step()
 
             step += 1
-            if step%self.eval_step==0:
+            
+            if step % self.eval_step==0:
                 self._eval_on_batch_end(step)
+
+            self.iter_step += 1
+            if self.max_iter_step > 0 and self.iter_step >= self.max_iter_step:
+                logger.warning(f"Reach maximum iteration steps = {self.max_iter_step}, stop training!")
+                break
+
         self.lr_scheduler.step()
     
     def _get_subset_dataloader(self, dataloader, test_size=4096):
@@ -154,7 +163,7 @@ class Trainer:
         logger.info(f"Epoch [{epoch_idx}/{self.num_epochs}], test_loss: {loss:.6f}, test_accuracy: {acc:.6f}")
 
         # 判断是否达到了 99% 的 test accuracy
-        if acc >= 0.99:
+        if acc >= self.stop_acc/100:
             return True  # 返回 True 以触发提前停止
         return False  # 返回 False 继续训练
     
@@ -220,7 +229,7 @@ class Trainer:
             data_size = self.num_epochs * self.train_data_proportion
             plt.savefig(
                 f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
-                f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
+                f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion:.2f}.png'
             )
 
         elif self.Q4 == "Task2":  # Task 2 保存路径
