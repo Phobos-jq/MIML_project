@@ -6,10 +6,10 @@ from model import Transformer, MLP, LSTM
 class Trainer:
     p: int = 97
     k: int = 2
-    Q4: bool = True     # 判断图像保存在Q3文件夹还是Q4文件夹
+    Q4: bool = "Task4"     # 判断图像保存在Q3文件夹还是Q4文件夹
     train_data_proportion: float = 0.5
     random_seed: int = 42
-    batch_size: int = 64
+    batch_size: int = 512
     verbose: int = 1
     eval_step: int = 1  # 每隔多少个step计算一次train和test的acc
     num_epochs: int = 50
@@ -188,28 +188,61 @@ class Trainer:
         # self.model.train() # 注意复原训练状态
     
     def plt_train_test_acc(self):
-        os.makedirs('eval_result',exist_ok=True)
-        np.save('eval_result/train_acc.npy',np.array(self.stepwise_train_acc))
-        np.save('eval_result/test_acc.npy',np.array(self.stepwise_test_acc))
-        plt.figure(figsize=(12,9),dpi=800)
-        plt.plot(list(range(len(self.stepwise_train_acc))),self.stepwise_train_acc,label='train_accuracy')
-        plt.plot(list(range(len(self.stepwise_test_acc))),self.stepwise_test_acc,label='test_accuracy')
+        os.makedirs('eval_result', exist_ok=True)
+        np.save('eval_result/train_acc.npy', np.array(self.stepwise_train_acc))
+        np.save('eval_result/test_acc.npy', np.array(self.stepwise_test_acc))
+        plt.figure(figsize=(12, 9), dpi=300)  # 调整图形大小和分辨率
+        plt.plot(list(range(len(self.stepwise_train_acc))), self.stepwise_train_acc, label='train_accuracy')
+        plt.plot(list(range(len(self.stepwise_test_acc))), self.stepwise_test_acc, label='test_accuracy')
         plt.xscale('log')
+        plt.ylim(0, 1.05)  # 确保 y 轴范围固定
+        plt.gca().autoscale(False)  # 禁止自动调整轴范围
         plt.legend()
-        if self.Q4 == True:
-            os.makedirs('Q4',exist_ok=True)
-            os.makedirs(f'Q4/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',exist_ok=True)
+
+        # 判断任务类型
+        if self.Q4 == "Task4":  # Task 4 保存路径
+            os.makedirs('Q4', exist_ok=True)
+            os.makedirs(
+                f'Q4/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',
+                exist_ok=True)
             data_size = self.num_epochs * self.train_data_proportion
             plt.savefig(
                 f'Q4/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
                 f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
             )
-        else:
-            os.makedirs('Q3',exist_ok=True)
-            os.makedirs(f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',exist_ok=True)
+            plt.show()
+
+        elif self.Q4 == "Task3":  # Task 3 保存路径
+            os.makedirs('Q3', exist_ok=True)
+            os.makedirs(
+                f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',
+                exist_ok=True)
             data_size = self.num_epochs * self.train_data_proportion
             plt.savefig(
                 f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
                 f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
             )
+
+        elif self.Q4 == "Task2":  # Task 2 保存路径
+            os.makedirs('Q2', exist_ok=True)
+            os.makedirs(f'Q2/p_{self.p}__k_{self.k}__model_{self.model_type}', exist_ok=True)
+            data_size = self.num_epochs * self.train_data_proportion
+            plt.savefig(
+                f'Q2/p_{self.p}__k_{self.k}__model_{self.model_type}/'
+                f'bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
+            )
+
+        elif self.Q4 == "Task1":  # Task 1 保存路径
+            os.makedirs('Q1', exist_ok=True)
+            os.makedirs(f'Q1/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}', exist_ok=True)
+            data_size = self.num_epochs * self.train_data_proportion
+            plt.savefig(
+                f'Q1/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}/'
+                f'bs_{self.batch_size}__ds_{data_size}.png'
+            )
+
+        else:
+            raise ValueError("Invalid task type. Please set self.Q4 to 'Task1', 'Task2', 'Task3', or 'Task4'.")
+
         return self.stepwise_test_acc[-1]
+
