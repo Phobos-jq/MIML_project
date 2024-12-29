@@ -1,1 +1,27 @@
 # MIML_project
+
+更新日志
+
+12.28 19：30 cfq 
+
+1. 更新了 cfq_task3plot.py 用来画task3的图，cfq_demo_task1_Transformer_tuning.py cfq_demo_task3_RMSProp_tuning.py 分别是调参用到，可忽略。
+
+2. dependencies.py 增加了 pandas
+
+3. trainer.py 增加了 Trainer 类的 max_iter_step 属性，用来限制最大迭代步数，当迭代步数达到后强制结束训练，默认值为-1，表示无穷大。
+
+4. 基于 github 仓库，更新了微信群中的  task1plot.py, task2plot.py, trainer.py 直接复制进来并覆盖。
+
+5. trainer.py 增加了 Trainer 类的 stop_acc 属性， 默认值 99，表示会在测试集 99% 正确率停止，现在可以指定为101，不做强制停止，或者其他正确率。
+
+12.29 23：00 cfq
+
+1. task3 已经跑完，补充的图和中间结果存在 ./Q3_cfq_result 中，最终的图见 ./Q3_cfq_result/fig/q3_final_fig.png 。
+
+2. 新增了 ./log 目录用来存储训练的 terminal 输出。
+
+3. 运行方法： 运行 ./cfq_task3plot.py 即可，注意 flag_trained = True 是用现有输出来画图，flag_trained = False 会导致重新训练，覆盖上述的 result, log 中的文件。
+
+4. 其余 ./cfq_demo_task3_xxxxxx.py 的脚本是在 ./cfq_task3plot.py 中调用的，比较了九种模型，每个命名对应一个子模型。
+
+5. ./Q3 中之前画的图应该之后不用了，为了浏览清晰已删除。

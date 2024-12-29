@@ -1,52 +1,61 @@
 from dependencies import *
 from trainer import Trainer
 
-train_data_proportion_list = [item * 0.05 for item in range(6,20)][::-1]
-optimization_budget_step = 15000 # 最多使用的步数
-seed_list = [10,11,12]
-best_validation_acc_list = [[] for _ in range(len(seed_list))]
-optimizer_type = "RMSprop"
-for train_data_proportion in train_data_proportion_list:
-    for idx, seed in enumerate(seed_list):
-        logger.info(f"Training model with alpha = {train_data_proportion:.2f}, seed = {seed}")
-        transformer_trainer = Trainer(
-            Q4="Task3",
-            p=97,
-            train_data_proportion=train_data_proportion,
-            random_seed=seed,
-            batch_size=1024,
-            verbose=1,
-            num_epochs=1000,
-            num_layers=2,
-            seq_len=2,  # 以我的理解这是个固定值
-            lr=1e-3,
-            weight_decay=0.0,
-            model_type="Transformer",
-            lr_gamma=0.992,
-            lr_step=1,
-            max_iter_step=optimization_budget_step,
-            optimizer_type=optimizer_type,
-            momentum=0.0,
-            dropout=0.0,
-            stop_acc=100,
-        )
-        transformer_trainer.fit()
-        transformer_trainer.plt_train_test_acc()
-        stepwise_test_acc = transformer_trainer.stepwise_test_acc
-        stepwise_test_acc = stepwise_test_acc[:optimization_budget_step]
-        best_validation_acc = max(stepwise_test_acc)
-        best_validation_acc_list[idx].append(best_validation_acc)
-best_validation_acc_list = [item[::-1] for item in best_validation_acc_list]
-train_data_proportion_list = train_data_proportion_list[::-1]
-os.makedirs("./Q3_cfq_result/fig",exist_ok=True)
-se = pd.DataFrame(np.array(best_validation_acc_list),index=seed_list,columns=train_data_proportion_list)
-se.to_parquet("./Q3_cfq_result/df_best_val_acc.pq")
+def run_script(cmd):
+    print(f"Running {cmd}...")
+    subprocess.run(cmd,bufsize=1,shell=True)
+    print(f"Finished {cmd}")
 
-best_validation_acc_mean_list = [sum(item) / len(item) for item in zip(*best_validation_acc_list)]
-plt.figure()
-plt.plot(train_data_proportion_list,best_validation_acc_mean_list)
-for i in range(len(seed_list)):
-    plt.scatter(train_data_proportion_list,best_validation_acc_list[i],s=5,alpha=0.4)
-plt.title(f"RMSprop Baseline")
-plt.savefig(f"./Q3_cfq_result/fig/q3_{optimizer_type}.png")
-plt.show()
+if __name__ == "__main__":
+    
+    flag_trained = True # 是否已经训练完毕并保存了相应的validation信息
+    
+
+    if flag_trained:
+        # 只通过保存的内容作图
+        scripts = os.listdir()
+        pattern = r"cfq_demo_task3_(.*?)\.py"
+        name_list = []
+        for item in scripts:
+            match = re.search(pattern, item)
+            if match:
+                name_list.append(match.group(1))
+        print(name_list)
+        x_list = []
+        y_list = []
+        for item in name_list:
+            path = f"./Q3_cfq_result/df_best_val_acc_{item}.pq"
+            if os.path.exists(path):
+                val_res = pd.read_parquet(path)
+            else:
+                logger.warning(f"{path} do not exist! Use previous one.")
+            y_list.append(val_res.values * 100)
+            x_list.append(list(val_res.columns))
+        fig, axes = plt.subplots(3, 3, figsize=(15, 10), sharex=True, sharey=True)
+        axes = axes.ravel()
+        for i, ax in enumerate(axes):
+            y = np.mean(y_list[i],axis=0)
+            ax.plot(x_list[i], y , label="Best validation accuracy")
+            for j in range(len(y_list[i])):
+                ax.scatter(x_list[i], y_list[i][j,:])
+            ax.set_title(name_list[i])
+            ax.set_ylim(0, 102)
+            ax.set_xlabel("Training data fraction")
+            ax.set_ylabel("Best validation accuracy")
+            ax.grid(True)
+        plt.tight_layout()
+        plt.savefig(f"./Q3_cfq_result/fig/q3_final_fig.png")
+        plt.show()
+
+    else:
+        # 训练所有模型，输出单模型的图片
+        log_dir = "./log/task_3"
+        os.makedirs(log_dir, exist_ok=True)
+        scripts = os.listdir()
+        pattern = r"cfq_demo_task3_(.*?)\.py"
+        scripts = [item for item in scripts if re.search(pattern, item)]
+        print(scripts)
+        cmd_list = [f"python {item} > {log_dir}/{item[:-3]}.txt 2>&1 " for item in scripts]
+        with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+            pool.map(run_script, cmd_list)
+        print("All scripts have been executed.")

@@ -70,6 +70,12 @@ class Trainer:
                 momentum=self.momentum,
                 weight_decay=self.weight_decay,
             )
+        elif self.optimizer_type == "Adam":
+            self.optimizer = torch.optim.Adam(
+                self.model.parameters(),
+                lr=self.lr,
+                weight_decay=self.weight_decay,
+            )
         else:
             raise ValueError(f"Unsupported optimizer type: {self.optimizer_type}")
         self.lr_scheduler = torch.optim.lr_scheduler.StepLR( 
@@ -229,7 +235,7 @@ class Trainer:
             data_size = self.num_epochs * self.train_data_proportion
             plt.savefig(
                 f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
-                f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion:.2f}.png'
+                f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{int(data_size)}__alpha_{self.train_data_proportion:.2f}_seed_{self.random_seed}.png'
             )
 
         elif self.Q4 == "Task2":  # Task 2 保存路径
