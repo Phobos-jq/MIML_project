@@ -12,3 +12,8 @@
 3. 运行方法： 运行 ./cfq_task3plot.py 即可，注意 flag_trained = True 是用现有输出来画图，flag_trained = False 会导致重新训练，覆盖上述的 result, log 中的文件。
 4. 其余 ./cfq_demo_task3_xxxxxx.py 的脚本是在 ./cfq_task3plot.py 中调用的，比较了九种模型，每个命名对应一个子模型。
 5. ./Q3 中之前画的图应该之后不用了，为了浏览清晰已删除。
+
+1.1 20:00 ljq
+1. model.py中的MLP模型增加了masked_forward函数，用于研究sub-network
+2. trainer.py中增加了SubnetworkEvaluator类，用于寻找稀疏子网络
+3. 运行q5_jq.py，可以获得在2层MLP，p=31时模型的稀疏性随训练变化结果，存储在Q5文件夹中

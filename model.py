@@ -69,6 +69,63 @@ class MLP(torch.nn.Module):
 
     def forward(self, inputs):
         return self.layers(inputs).unsqueeze(1)  # 将(batch_size, p)转换为(batch_size, 1, p), 为了与 Transformer 的输出维度一致
+    
+    def find_linear_layers(self, module, linear_layers):
+        """
+        递归遍历模型，找到所有 nn.Linear 层及其索引。
+        Args:
+            module: 模型或子模块。
+            linear_layers: 用于存储找到的 nn.Linear 层的列表。
+        """
+        for layer in module.children():
+            if isinstance(layer, nn.Linear):
+                linear_layers.append(layer)
+            elif isinstance(layer, nn.Sequential):
+                self.find_linear_layers(layer, linear_layers)
+
+    def masked_forward(self, inputs, masks):
+        """
+        使用 masks 对多层神经元进行筛选。
+        支持递归处理 nn.Sequential 结构。
+        
+        Args:
+            inputs: 模型的输入张量。
+            masks: 字典，键为线性层索引，值为对应层的 mask。
+        """
+        x = self.layers[0](inputs)  # 处理 Flatten
+        layer_idx = 0  # 记录逻辑线性层索引
+        x, _ = self._apply_layers_with_masks(self.layers[1:], x, masks, layer_idx)  # 递归处理层
+        return x.unsqueeze(1)  # 返回维度一致的结果
+
+    def _apply_layers_with_masks(self, module, x, masks, layer_idx):
+        """
+        递归遍历模型的每一层，应用 mask 到线性层。
+        
+        Args:
+            module: 当前模型或子模块（可能是 nn.Sequential）。
+            x: 当前层的输入张量。
+            masks: 字典，键为逻辑线性层索引，值为对应层的 mask。
+            layer_idx: 当前逻辑线性层索引。
+        
+        Returns:
+            处理后的输出张量。
+        """
+        for layer in module:
+            if isinstance(layer, nn.Linear):
+                # 检查是否需要对该线性层应用 mask
+                if layer_idx in masks:
+                    x = layer(x)  # 应用线性变换
+                    mask = masks[layer_idx]
+                    x = x * mask  # 应用 mask
+                else:
+                    x = layer(x)  # 应用线性变换但无 mask
+                layer_idx += 1  # 更新逻辑线性层索引
+            elif isinstance(layer, nn.Sequential):
+                # 如果是嵌套 Sequential，递归进入
+                x, layer_idx = self._apply_layers_with_masks(layer, x, masks, layer_idx)
+            else:
+                x = layer(x)  # 处理非线性激活或其他层
+        return x, layer_idx
 
 
 # 默认输入的 X 是 onehot encode 完成的，3d tensor
