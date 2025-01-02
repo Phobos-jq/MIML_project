@@ -12,7 +12,13 @@ class Transformer(torch.nn.Module):
             nn.Linear(p, p)
         )
 
-    def forward(self, inputs):
+    def forward(self, inputs, add_noise=False, noise_std=0.0):
+        if add_noise and noise_std > 0:
+            # 生成噪声
+            noise = torch.randn_like(inputs) * noise_std
+            # 添加噪声到输入的embedding
+            perturbed_inputs = inputs + noise
+            return self.model(perturbed_inputs)
         return self.model(inputs)
 
 

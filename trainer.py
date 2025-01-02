@@ -147,6 +147,10 @@ class Trainer:
     def _eval_on_epoch_end(self, epoch_idx):
         self.model.eval()
 
+        # 计算并存储L2范数
+        l2_norm = self._calculate_l2_norm()
+        self.epoch_l2_norms.append(l2_norm)
+
         # 创建子集 DataLoader
         train_subset_dataloader = self._get_subset_dataloader(self.train_dataloader, 4096*4)
         loss = 0.0
@@ -157,9 +161,10 @@ class Trainer:
                 out = self.model(X)[:, -1, :]
                 correct_cnt += (torch.argmax(out, dim=1) == y).sum()
                 loss += self.criterion(out, y) * len(y)
-        acc = correct_cnt / len(train_subset_dataloader.sampler)
+        train_acc = correct_cnt / len(train_subset_dataloader.sampler)
         loss = loss / len(train_subset_dataloader.sampler)
-        logger.info(f"Epoch [{epoch_idx}/{self.num_epochs}], train_loss: {loss:.6f}, train_accuracy: {acc:.6f}")
+        self.epoch_train_acc.append(train_acc.item())
+        logger.info(f"Epoch [{epoch_idx}/{self.num_epochs}], train_loss: {loss:.6f}, train_accuracy: {train_acc:.6f}")
         
         test_subset_dataloader = self._get_subset_dataloader(self.test_dataloader, 4096*4)
         loss = 0.0
@@ -170,14 +175,16 @@ class Trainer:
                 out = self.model(X)[:, -1, :]
                 correct_cnt += (torch.argmax(out, dim=1) == y).sum()
                 loss += self.criterion(out, y) * len(y)
-        acc = correct_cnt / len(test_subset_dataloader.sampler)
+        test_acc = correct_cnt / len(test_subset_dataloader.sampler)
         loss = loss / len(test_subset_dataloader.sampler)
-        logger.info(f"Epoch [{epoch_idx}/{self.num_epochs}], test_loss: {loss:.6f}, test_accuracy: {acc:.6f}")
+        self.epoch_test_acc.append(test_acc.item())
+        logger.info(f"Epoch [{epoch_idx}/{self.num_epochs}], test_loss: {loss:.6f}, test_accuracy: {test_acc:.6f}")
 
         # 判断是否达到了 99% 的 test accuracy
-        if acc >= self.stop_acc/100:
+        if test_acc >= 0.99:
             return True  # 返回 True 以触发提前停止
         return False  # 返回 False 继续训练
+
     
     def _eval_on_batch_end(self, step_idx):
         self.model.eval()
@@ -229,74 +236,106 @@ class Trainer:
         # self.model.train() # 注意复原训练状态
     
     def plt_train_test_acc(self):
-        os.makedirs('eval_result', exist_ok=True)
-        np.save('eval_result/train_acc.npy', np.array(self.stepwise_train_acc))
-        np.save('eval_result/test_acc.npy', np.array(self.stepwise_test_acc))
-        plt.figure(figsize=(12, 9), dpi=300)  # 调整图形大小和分辨率
-        plt.plot(list(range(len(self.stepwise_train_acc))), self.stepwise_train_acc, label='train_accuracy')
-        plt.plot(list(range(len(self.stepwise_test_acc))), self.stepwise_test_acc, label='test_accuracy')
-        plt.xscale('log')
-        plt.ylim(0, 1.05)  # 确保 y 轴范围固定
-        plt.gca().autoscale(False)  # 禁止自动调整轴范围
-        plt.legend()
+        if self.Q4 == "Task5":
+            # Task5的特定逻辑
+            os.makedirs('eval_result_task5', exist_ok=True)
+            np.save('eval_result_task5/train_acc.npy', np.array(self.epoch_train_acc))
+            np.save('eval_result_task5/test_acc.npy', np.array(self.epoch_test_acc))
+            np.save('eval_result_task5/l2_norms.npy', np.array(self.epoch_l2_norms))
 
-        # 判断任务类型
-        if self.Q4 == "Task4":  # Task 4 保存路径
-            os.makedirs('Q4', exist_ok=True)
-            os.makedirs(
-                f'Q4/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',
-                exist_ok=True)
-            data_size = self.num_epochs * self.train_data_proportion
-            plt.savefig(
-                f'Q4/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
-                f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
-            )
-            plt.show()
+            # 创建Task5的图表
+            fig, ax1 = plt.subplots(figsize=(12, 9), dpi=300)
+            ax2 = ax1.twinx()
 
-        elif self.Q4 == "Task3":  # Task 3 保存路径
-            os.makedirs('Q3', exist_ok=True)
-            os.makedirs(
-                f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',
-                exist_ok=True)
-            data_size = self.num_epochs * self.train_data_proportion
-            plt.savefig(
-                f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
-                f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{int(data_size)}__alpha_{self.train_data_proportion:.2f}_seed_{self.random_seed}.png'
-            )
+            # 绘制准确率（左y轴）
+            epochs = range(1, len(self.epoch_train_acc) + 1)
+            ln1 = ax1.plot(epochs, self.epoch_train_acc, 'b-', label='Train Accuracy')
+            ln2 = ax1.plot(epochs, self.epoch_test_acc, 'g-', label='Test Accuracy')
+            ax1.set_xlabel('Epoch')
+            ax1.set_ylabel('Accuracy')
 
-        elif self.Q4 == "Task2":  # Task 2 保存路径
-            os.makedirs('Q2', exist_ok=True)
-            os.makedirs(f'Q2/p_{self.p}__k_{self.k}__model_{self.model_type}', exist_ok=True)
-            data_size = self.num_epochs * self.train_data_proportion
-            plt.savefig(
-                f'Q2/p_{self.p}__k_{self.k}__model_{self.model_type}/'
-                f'bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
-            )
+            # 绘制L2范数（右y轴）
+            ln3 = ax2.plot(epochs, self.epoch_l2_norms, 'r-', label='L2 Norm')
+            ax2.set_ylabel('L2 Norm')
 
-        elif self.Q4 == "Task1":  # Task 1 保存路径
-            os.makedirs('Q1', exist_ok=True)
-            os.makedirs(f'Q1/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}', exist_ok=True)
-            data_size = self.num_epochs * self.train_data_proportion
-            plt.savefig(
-                f'Q1/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}/'
-                f'bs_{self.batch_size}__ds_{data_size}.png'
-            )
-        
-        elif self.Q4 == "test":
-            os.makedirs('test', exist_ok=True)
-            os.makedirs(f'test/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}', exist_ok=True)
-            data_size = self.num_epochs * self.train_data_proportion
-            plt.savefig(
-                f'test/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}/'
-                f'bs_{self.batch_size}__ds_{data_size}.png'
-            )
+            # 合并图例
+            lns = ln1 + ln2 + ln3
+            labs = [l.get_label() for l in lns]
+            ax1.legend(lns, labs, loc='center right')
 
+            # 设置标题
+            plt.title(f'Training Progress with L2 Norm - {self.model_type}')
+
+            # 创建保存路径
+            save_dir = f'Q5/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}'
+            os.makedirs(save_dir, exist_ok=True)
+            
+            # 保存图表
+            data_size = self.num_epochs * self.train_data_proportion
+            filename = f'{save_dir}/dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}_with_l2norm.png'
+            plt.savefig(filename)
+            plt.close()
+
+            return self.epoch_test_acc[-1]
+            
         else:
-            raise ValueError("Invalid task type. Please set self.Q4 to 'Task1', 'Task2', 'Task3', or 'Task4'.")
+            # 保持原有Task1-4的逻辑完全不变
+            os.makedirs('eval_result', exist_ok=True)
+            np.save('eval_result/train_acc.npy', np.array(self.stepwise_train_acc))
+            np.save('eval_result/test_acc.npy', np.array(self.stepwise_test_acc))
+            
+            plt.figure(figsize=(12, 9), dpi=300)  # 调整图形大小和分辨率
+            plt.plot(list(range(len(self.stepwise_train_acc))), self.stepwise_train_acc, label='train_accuracy')
+            plt.plot(list(range(len(self.stepwise_test_acc))), self.stepwise_test_acc, label='test_accuracy')
+            plt.xscale('log')
+            plt.legend()
 
-        return self.stepwise_test_acc[-1]
+            if self.Q4 == "Task4":  # Task 4 保存路径
+                os.makedirs('Q4', exist_ok=True)
+                os.makedirs(
+                    f'Q4/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',
+                    exist_ok=True)
+                data_size = self.num_epochs * self.train_data_proportion
+                plt.savefig(
+                    f'Q4/p_{self.p}__k_{self.k}__model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
+                    f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
+                )
 
+            elif self.Q4 == "Task3":  # Task 3 保存路径
+                os.makedirs('Q3', exist_ok=True)
+                os.makedirs(
+                    f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}',
+                    exist_ok=True)
+                data_size = self.num_epochs * self.train_data_proportion
+                plt.savefig(
+                    f'Q3/model_{self.model_type}__optim_{self.optimizer_type}__lr_{self.lr}__wd_{self.weight_decay}/'
+                    f'dropout_{self.dropout}__momentum_{self.momentum}__nesterov_{self.nesterov}__dampening_{self.dampening}__lrGamma_{self.lr_gamma}__lrStep_{self.lr_step}__bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
+                )
 
+            elif self.Q4 == "Task2":  # Task 2 保存路径
+                os.makedirs('Q2', exist_ok=True)
+                os.makedirs(f'Q2/p_{self.p}__k_{self.k}__model_{self.model_type}', exist_ok=True)
+                data_size = self.num_epochs * self.train_data_proportion
+                plt.savefig(
+                    f'Q2/p_{self.p}__k_{self.k}__model_{self.model_type}/'
+                    f'bs_{self.batch_size}__ds_{data_size}__alpha_{self.train_data_proportion}.png'
+                )
+
+            elif self.Q4 == "Task1":  # Task 1 保存路径
+                os.makedirs('Q1', exist_ok=True)
+                os.makedirs(f'Q1/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}', exist_ok=True)
+                data_size = self.num_epochs * self.train_data_proportion
+                plt.savefig(
+                    f'Q1/p_{self.p}__alpha_{self.train_data_proportion}__lr_{self.lr}__lrGamma_{self.lr_gamma}/'
+                    f'bs_{self.batch_size}__ds_{data_size}.png'
+                )
+
+            else:
+                raise ValueError("Invalid task type. Please set self.Q4 to 'Task1', 'Task2', 'Task3', 'Task4', or 'Task5'.")
+                
+            plt.close()
+            return self.stepwise_test_acc[-1]
+        
     def plt_train_test_loss_sparsity(self):
         # 确保保存目录存在
         os.makedirs('Q5', exist_ok=True)
@@ -578,6 +617,16 @@ class SubnetworkEvaluator:
         mask[active_indices] = 1  # 激活指定的神经元
         masks[layer_idx] = mask
         return masks
+    
+    def _calculate_l2_norm(self):
+        """计算模型所有参数的L2范数"""
+        total_norm = 0
+        with torch.no_grad():
+            for p in self.model.parameters():
+                param_norm = p.data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+        return total_norm
 
 
 def compare_model_weights(model1, model2):

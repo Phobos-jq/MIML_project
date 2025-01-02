@@ -17,3 +17,9 @@
 1. model.py中的MLP模型增加了masked_forward函数，用于研究sub-network
 2. trainer.py中增加了SubnetworkEvaluator类，用于寻找稀疏子网络
 3. 运行q5_jq.py，可以获得在2层MLP，p=31时模型的稀疏性随训练变化结果，存储在Q5文件夹中
+
+1.2 22:00 wrl
+1. task5 计算了模型参数的l_2范数, 并在 Transformer 的 embedding 层添加扰动加速了 grokking, 图像存在Q5的accelerate起名的两个文件夹中
+2. model.py 中 Transformer 的 forward 方法新增了扰动 
+3. 新上传了专做 task5 的 trainer_for_task5.py
+4. 上传了 task5 的运行程序 q5_l2norm_wrl.py 与 q5_accelerate_grokking_wrl.py 
