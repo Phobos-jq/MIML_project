@@ -1,5 +1,18 @@
 # MIML_project
 
+Subtask3 运行方法：
+
+python task3plot.py
+
+注意，该脚本会多进程调用目录中 task3_ 开头的脚本进行试验，分别对应不同的方法（如超参数，优化器等）。最后作图，作图所用的数据，子图，以及合成的大图见 ./Q3_result 目录，脚本的日志见 ./log/task_3 目录
+
+Subtask4 运行方法：
+
+python task4plot.py
+
+注意，该脚本会多进程调用目录中 task4_ 开头的脚本进行试验，最后作图，图片见 ./Q4 目录，脚本的日志见 ./log/task_4 目录
+
+
 更新日志
 
 12.28 19：30 cfq 
@@ -25,3 +38,21 @@
 4. 其余 ./cfq_demo_task3_xxxxxx.py 的脚本是在 ./cfq_task3plot.py 中调用的，比较了九种模型，每个命名对应一个子模型。
 
 5. ./Q3 中之前画的图应该之后不用了，为了浏览清晰已删除。
+
+1.1 20:00 ljq
+
+1. model.py中的MLP模型增加了masked_forward函数，用于研究sub-network
+
+2. trainer.py中增加了SubnetworkEvaluator类，用于寻找稀疏子网络
+
+3. 运行q5_jq.py，可以获得在2层MLP，p=31时模型的稀疏性随训练变化结果，存储在Q5文件夹中
+
+1.2 22:00 wrl
+
+1. task5 计算了模型参数的l_2范数, 并在 Transformer 的 embedding 层添加扰动加速了 grokking, 图像存在Q5的accelerate起名的两个文件夹中
+
+2. model.py 中 Transformer 的 forward 方法新增了扰动 
+
+3. 新上传了专做 task5 的 trainer_for_task5.py
+
+4. 上传了 task5 的运行程序 q5_l2norm_wrl.py 与 q5_accelerate_grokking_wrl.py 
