@@ -1,5 +1,17 @@
 # MIML_project
 
+Subtask1 运行方法:
+
+python task1plot.py
+
+该脚本对不同超参数画了准确率随迭代次数的图像. 图片见 ./Q1 目录 
+
+Subtask2 运行方法:
+
+python task2plot.py
+
+该脚本对不同模型以及超参数画了准确率随迭代次数的图像. 图片见 ./Q2 目录
+
 Subtask3 运行方法：
 
 python task3plot.py
@@ -11,6 +23,20 @@ Subtask4 运行方法：
 python task4plot.py
 
 注意，该脚本会多进程调用目录中 task4_ 开头的脚本进行试验，最后作图，图片见 ./Q4 目录，脚本的日志见 ./log/task_4 目录
+
+Subtask5 运行方法:
+
+q5_l2_norm.py
+
+该脚本画了准确率以及模型参数的 l_2 范数随迭代次数的图像, q5_开头的脚本作的图均存在 ./Q4 目录
+
+q5_jq.py
+
+该脚本画了模型子网络的稀疏度与准确率/损失函数随迭代次数的图像
+
+q_5_accelerate_grokking.py
+
+该脚本画了添加扰动后准确率与模型参数的 l_2 范数随迭代次数的图像
 
 
 更新日志
