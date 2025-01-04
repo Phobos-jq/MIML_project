@@ -1,5 +1,8 @@
 # MIML_project
 
+该项目复现了论文 [GROKKING: GENERALIZATION BEYOND OVERFITTING ON SMALL ALGORITHMIC DATASETS](https://arxiv.org/pdf/2201.02177)中的Grokking现象，并进一步探究了不同的模型、优化器、超参数以及问题复杂度对Grokking现象的影响。并从模型参数的范数以及稀疏子网络的角度对Grokking现象进行了进一步的解释，实现了利用数据扰动加速模型泛化的算法。
+
+
 ## 主要代码内容
 * data.py: 生成训练与测试数据集
 * model.py: 定义模型,包括Transformer，MLP，LSTM
